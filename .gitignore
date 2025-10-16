@@ -31,3 +31,6 @@ go.work.sum
 # OS
 .DS_Store
 Thumbs.db
+
+DEVELOPMENT_GUIDE.md
+.claude/
