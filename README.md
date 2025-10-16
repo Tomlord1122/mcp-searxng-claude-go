@@ -50,26 +50,37 @@ A high-performance [Model Context Protocol (MCP)](https://modelcontextprotocol.i
    docker compose logs -f mcp-searxng-go
    ```
 5. **Setup your environment to use it in Claude Code**
-   Create a file with this name ~/.mcp.json
-   ```bash
-   {
-  "mcpServers": {
-    "searxng": {
-      "command": "docker",
-      "args": ["exec", "-i", "mcp-searxng-go", "/app/mcp-searxng-go"],
-      "env": {
-        "SEARXNG_URL": "http://searxng:8080"
-      },
-      "autoApprove": [
-        "searxng_web_search",
-        "web_url_read"
-      ]
-    }
-  }
-}
+   Create a file with this name `~/.mcp.json`
 
+   ```json
+   {
+     "mcpServers": {
+       "searxng": {
+         "command": "docker",
+         "args": ["exec", "-i", "mcp-searxng-go", "/app/mcp-searxng-go"],
+         "env": {
+           "SEARXNG_URL": "http://searxng:8080"
+         }
+       }
+     }
+   }
    ```
 
+   Add this to `~/.claude/settings.json`
+   ```json
+   {
+    "permissions": {
+    "allow": [
+      "mcp__searxng__searxng_web_search",
+      "mcp__searxng__web_url_read"
+    ]
+    },
+    "enabledMcpjsonServers": [
+      "searxng"
+    ]
+    }
+ 
+   ```
 ### Local Development
 
 1. **Install dependencies:**
