@@ -1,0 +1,49 @@
+services:
+  # SearXNG metasearch engine
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng-go
+    volumes:
+      - ./searxng/config/:/etc/searxng/
+      - ./searxng/data/:/var/cache/searxng/
+    environment:
+      - SEARXNG_BIND_ADDRESS=0.0.0.0
+      - SEARXNG_PORT=8080
+      - SEARXNG_LIMITER=false
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    env_file:
+      - .env
+    # Modify settings.yml to enable JSON format
+    command: >
+      sh -c "
+      sed -i'' '/^[[:space:]]*formats:/,/^[[:space:]]*[a-z]+:/{s/- html/- json/}' /etc/searxng/settings.yml &&
+      exec /usr/local/searxng/dockerfiles/docker-entrypoint.sh
+      "
+
+  # MCP SearXNG Server (Go version)
+  mcp-searxng-go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-searxng-go
+    stdin_open: true
+    tty: true
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+      # Add X-Forwarded-For header support
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - searxng
+    networks:
+      - mcp-network
+    env_file:
+      - .env
+
+networks:
+  mcp-network:
+    name: mcp-network-go
+    driver: bridge
