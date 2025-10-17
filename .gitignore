@@ -14,8 +14,6 @@ mcp-searxng-go
 # Environment variables
 .env
 
-# SearXNG data
-searxng/
 
 # Go workspace files
 go.work
