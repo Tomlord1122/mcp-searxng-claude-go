@@ -2,7 +2,10 @@
 
 A high-performance [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server implementation in Go that provides AI assistants with privacy-focused web search capabilities through [SearXNG](https://docs.searxng.org/).
 
+Built with the [official MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk) maintained in collaboration with Google.
+
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![MCP SDK](https://img.shields.io/badge/MCP--SDK-Official-green)](https://github.com/modelcontextprotocol/go-sdk)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 

@@ -11,12 +11,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type URLReader struct {
 	cache      *Cache
 	httpClient *http.Client
+}
+
+// URLReadArgs defines the parameters for URL reading
+type URLReadArgs struct {
+	URL            string `json:"url" jsonschema:"URL to read"`
+	StartChar      int    `json:"startChar,omitempty" jsonschema:"starting character position for content extraction (default: 0)"`
+	MaxLength      int    `json:"maxLength,omitempty" jsonschema:"maximum number of characters to return"`
+	Section        string `json:"section,omitempty" jsonschema:"extract content under a specific heading"`
+	ParagraphRange string `json:"paragraphRange,omitempty" jsonschema:"return specific paragraph ranges (e.g., '1-5', '3', '10-')"`
+	ReadHeadings   bool   `json:"readHeadings,omitempty" jsonschema:"return only a list of headings instead of full content"`
 }
 
 func NewURLReader(cache *Cache, proxyConfig *ProxyConfig) *URLReader {
@@ -137,63 +147,70 @@ func htmlToMarkdown(html string) string {
 	return strings.TrimSpace(content)
 }
 
-func handleURLRead(ctx context.Context, request mcp.CallToolRequest, reader *URLReader) (result *mcp.CallToolResult, err error) {
+func handleURLRead(ctx context.Context, req *mcp.CallToolRequest, reader *URLReader, args URLReadArgs) (result *mcp.CallToolResult, _ any, err error) {
 	// Add panic recovery to prevent crashes
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in URL read: %v", r)
-			result = mcp.NewToolResultError(fmt.Sprintf("Internal error: %v", r))
+			result = &mcp.CallToolResult{
+				IsError: true,
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Internal error: %v", r)},
+				},
+			}
 		}
 	}()
 
-	// Extract URL
-	urlStr, err := request.RequireString("url")
-	if err != nil {
-		return mcp.NewToolResultError("url parameter is required"), nil
+	// Validate required parameter
+	if args.URL == "" {
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "url parameter is required"},
+			},
+		}, nil, nil
 	}
 
 	// Fetch content
-	content, err := reader.FetchAndConvert(ctx, urlStr)
+	content, err := reader.FetchAndConvert(ctx, args.URL)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Failed to read URL: %v", err)), nil
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Failed to read URL: %v", err)},
+			},
+		}, nil, nil
 	}
 
 	// Apply pagination options
-	args := request.GetArguments()
-	content = applyPagination(content, args)
+	content = applyPaginationOptions(content, args)
 
-	return mcp.NewToolResultText(content), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: content},
+		},
+	}, nil, nil
 }
 
-func applyPagination(content string, args map[string]interface{}) string {
+func applyPaginationOptions(content string, args URLReadArgs) string {
 	// Read headings only
-	if readHeadings, ok := args["readHeadings"].(bool); ok && readHeadings {
+	if args.ReadHeadings {
 		return extractHeadings(content)
 	}
 
 	// Extract specific section
-	if section, ok := args["section"].(string); ok && section != "" {
-		content = extractSection(content, section)
+	if args.Section != "" {
+		content = extractSection(content, args.Section)
 	}
 
 	// Extract paragraph range
-	if paragraphRange, ok := args["paragraphRange"].(string); ok && paragraphRange != "" {
-		content = extractParagraphRange(content, paragraphRange)
+	if args.ParagraphRange != "" {
+		content = extractParagraphRange(content, args.ParagraphRange)
 	}
 
 	// Character-level pagination
-	startChar := 0
-	if sc, ok := args["startChar"].(float64); ok {
-		startChar = int(sc)
-	}
-
-	maxLength := -1
-	if ml, ok := args["maxLength"].(float64); ok {
-		maxLength = int(ml)
-	}
-
-	if startChar > 0 || maxLength > 0 {
-		content = applyCharacterPagination(content, startChar, maxLength)
+	if args.StartChar > 0 || args.MaxLength > 0 {
+		content = applyCharacterPagination(content, args.StartChar, args.MaxLength)
 	}
 
 	return content

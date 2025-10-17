@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func createConfigResource() string {
@@ -90,24 +90,32 @@ The server requires the following environment variables:
 
 ## Getting Help
 
-For more information, visit: https://github.com/AI-Task-Force/mcp-searxng-go
+For more information, visit: https://github.com/Tomlord1122/mcp-searxng-claude-go
 `
 }
 
-func createConfigResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func createConfigResourceHandler(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	content := createConfigResource()
-	return []mcp.ResourceContents{&mcp.TextResourceContents{
-		URI:      "config://mcp-searxng",
-		MIMEType: "application/json",
-		Text:     content,
-	}}, nil
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{
+			{
+				URI:      "config://mcp-searxng",
+				MIMEType: "application/json",
+				Text:     content,
+			},
+		},
+	}, nil
 }
 
-func createHelpResourceHandler(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func createHelpResourceHandler(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	content := createHelpResource()
-	return []mcp.ResourceContents{&mcp.TextResourceContents{
-		URI:      "help://mcp-searxng",
-		MIMEType: "text/markdown",
-		Text:     content,
-	}}, nil
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{
+			{
+				URI:      "help://mcp-searxng",
+				MIMEType: "text/markdown",
+				Text:     content,
+			},
+		},
+	}, nil
 }

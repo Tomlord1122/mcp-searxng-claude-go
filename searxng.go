@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type SearXNGClient struct {
@@ -28,6 +28,15 @@ type SearXNGResult struct {
 
 type SearXNGResponse struct {
 	Results []SearXNGResult `json:"results"`
+}
+
+// WebSearchArgs defines the parameters for web search
+type WebSearchArgs struct {
+	Query      string `json:"query" jsonschema:"the search query"`
+	PageNo     int    `json:"pageno,omitempty" jsonschema:"search page number (starts at 1)"`
+	TimeRange  string `json:"time_range,omitempty" jsonschema:"time range of search (day, month, or year)"`
+	Language   string `json:"language,omitempty" jsonschema:"language code for search results (e.g., 'en', 'fr', 'de')"`
+	SafeSearch string `json:"safesearch,omitempty" jsonschema:"safe search filter level (0: None, 1: Moderate, 2: Strict)"`
 }
 
 func NewSearXNGClient(baseURL string, proxyConfig *ProxyConfig) *SearXNGClient {
@@ -110,35 +119,54 @@ func (c *SearXNGClient) Search(ctx context.Context, query string, pageno int, ti
 	return &result, nil
 }
 
-func handleWebSearch(ctx context.Context, request mcp.CallToolRequest, client *SearXNGClient) (*mcp.CallToolResult, error) {
-	// Extract parameters
-	query, err := request.RequireString("query")
-	if err != nil {
-		return mcp.NewToolResultError("query parameter is required"), nil
+func handleWebSearch(ctx context.Context, req *mcp.CallToolRequest, client *SearXNGClient, args WebSearchArgs) (*mcp.CallToolResult, any, error) {
+	// Validate required parameter
+	if args.Query == "" {
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "query parameter is required"},
+			},
+		}, nil, nil
 	}
 
-	pageno := request.GetInt("pageno", 1)
-	timeRange := request.GetString("time_range", "")
-	language := request.GetString("language", "all")
-	safesearch := request.GetString("safesearch", "0")
+	// Set defaults
+	if args.PageNo == 0 {
+		args.PageNo = 1
+	}
+	if args.Language == "" {
+		args.Language = "all"
+	}
+	if args.SafeSearch == "" {
+		args.SafeSearch = "0"
+	}
 
 	// Perform search
 	startTime := time.Now()
-	results, err := client.Search(ctx, query, pageno, timeRange, language, safesearch)
+	results, err := client.Search(ctx, args.Query, args.PageNo, args.TimeRange, args.Language, args.SafeSearch)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Search failed: %v", err)), nil
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Search failed: %v", err)},
+			},
+		}, nil, nil
 	}
 
 	duration := time.Since(startTime)
 
 	// Format output
 	if len(results.Results) == 0 {
-		output := fmt.Sprintf("# No Results Found\n\nNo results found for query: \"%s\"\n\nTry:\n- Different keywords\n- Broader search terms\n- Checking spelling", query)
-		return mcp.NewToolResultText(output), nil
+		output := fmt.Sprintf("# No Results Found\n\nNo results found for query: \"%s\"\n\nTry:\n- Different keywords\n- Broader search terms\n- Checking spelling", args.Query)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: output},
+			},
+		}, nil, nil
 	}
 
-	output := fmt.Sprintf("# Search Results for \"%s\"\n\n", query)
-	output += fmt.Sprintf("Found %d results (page %d) in %dms\n\n", len(results.Results), pageno, duration.Milliseconds())
+	output := fmt.Sprintf("# Search Results for \"%s\"\n\n", args.Query)
+	output += fmt.Sprintf("Found %d results (page %d) in %dms\n\n", len(results.Results), args.PageNo, duration.Milliseconds())
 
 	for i, result := range results.Results {
 		output += fmt.Sprintf("## %d. %s\n\n", i+1, result.Title)
@@ -147,5 +175,9 @@ func handleWebSearch(ctx context.Context, request mcp.CallToolRequest, client *S
 		output += "---\n\n"
 	}
 
-	return mcp.NewToolResultText(output), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: output},
+		},
+	}, nil, nil
 }
