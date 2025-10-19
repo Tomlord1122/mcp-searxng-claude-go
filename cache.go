@@ -25,8 +25,10 @@ func NewCache(ttlSeconds int) *Cache {
 		stopCleanup: make(chan bool),
 	}
 
-	// Start cleanup goroutine
-	c.cleanupTicker = time.NewTicker(30 * time.Second)
+	// Start cleanup goroutine - runs at 2x TTL to reduce CPU overhead
+	// This means each entry is checked ~once during its lifetime
+	cleanupInterval := time.Duration(ttlSeconds*2) * time.Second
+	c.cleanupTicker = time.NewTicker(cleanupInterval)
 	go c.cleanup()
 
 	return c
