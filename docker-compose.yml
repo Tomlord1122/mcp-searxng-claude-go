@@ -24,7 +24,7 @@ services:
       "
 
   # MCP SearXNG Server (Go version)
-  mcp-searxng-go:
+  searxng-go:
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,6 +34,7 @@ services:
     environment:
       - SEARXNG_URL=http://searxng:8080
       # Add X-Forwarded-For header support
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
