@@ -17,8 +17,9 @@ func createConfigResource() string {
 			"https": os.Getenv("HTTPS_PROXY"),
 		},
 		"cache": map[string]interface{}{
-			"enabled": true,
-			"ttl":     60,
+			"enabled":     true,
+			"ttl":         cacheTTLSeconds(),
+			"max_entries": cacheMaxEntries(),
 		},
 	}
 
@@ -35,7 +36,7 @@ This MCP server provides web search capabilities through SearXNG and URL content
 
 ## Available Tools
 
-### 1. searxng_web_search
+### 1. web_search
 
 Performs web searches using the SearXNG metasearch engine.
 
@@ -53,7 +54,7 @@ pageno: 1
 language: "en"
 ` + "```" + `
 
-### 2. web_url_read
+### 2. url_read
 
 Reads and converts web page content to Markdown format.
 
@@ -80,10 +81,12 @@ The server requires the following environment variables:
 - ` + "`AUTH_PASSWORD`" + `: Basic auth password (optional)
 - ` + "`HTTP_PROXY`" + `: HTTP proxy URL (optional)
 - ` + "`HTTPS_PROXY`" + `: HTTPS proxy URL (optional)
+- ` + "`CACHE_TTL`" + `: URL-read cache time-to-live in seconds (optional, default: 60)
+- ` + "`CACHE_MAX_ENTRIES`" + `: Max cached URLs kept in memory (optional, default: 500)
 
 ## Features
 
-- **Caching**: URL content is cached for 60 seconds to reduce load
+- **Caching**: URL content is cached (TTL and max size configurable via ` + "`CACHE_TTL`" + `/` + "`CACHE_MAX_ENTRIES`" + `) to reduce load
 - **Proxy Support**: Automatic proxy detection from environment
 - **Privacy**: All searches go through your own SearXNG instance
 - **Markdown Conversion**: HTML content is automatically converted to Markdown

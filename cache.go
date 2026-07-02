@@ -14,14 +14,19 @@ type Cache struct {
 	data          map[string]CacheEntry
 	mu            sync.RWMutex
 	ttl           time.Duration
+	maxEntries    int
 	cleanupTicker *time.Ticker
 	stopCleanup   chan bool
 }
 
-func NewCache(ttlSeconds int) *Cache {
+// NewCache creates a TTL cache. maxEntries bounds how large the cache
+// may grow between cleanup cycles (retention control); pass 0 for no
+// cap (not recommended for long-running processes).
+func NewCache(ttlSeconds int, maxEntries int) *Cache {
 	c := &Cache{
 		data:        make(map[string]CacheEntry),
 		ttl:         time.Duration(ttlSeconds) * time.Second,
+		maxEntries:  maxEntries,
 		stopCleanup: make(chan bool),
 	}
 
@@ -38,9 +43,34 @@ func (c *Cache) Set(key, value string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if _, exists := c.data[key]; !exists && c.maxEntries > 0 && len(c.data) >= c.maxEntries {
+		c.evictOldestLocked()
+	}
+
 	c.data[key] = CacheEntry{
 		Value:  value,
 		Expiry: time.Now().Add(c.ttl),
+	}
+}
+
+// evictOldestLocked removes the entry with the soonest expiry (i.e. the
+// oldest entry, since all entries share the same TTL). Caller must hold
+// c.mu (write lock).
+func (c *Cache) evictOldestLocked() {
+	var oldestKey string
+	var oldestExpiry time.Time
+	first := true
+
+	for key, entry := range c.data {
+		if first || entry.Expiry.Before(oldestExpiry) {
+			oldestKey = key
+			oldestExpiry = entry.Expiry
+			first = false
+		}
+	}
+
+	if !first {
+		delete(c.data, oldestKey)
 	}
 }
 
@@ -97,7 +127,8 @@ func (c *Cache) GetStats() map[string]interface{} {
 	defer c.mu.RUnlock()
 
 	return map[string]interface{}{
-		"size": len(c.data),
-		"ttl":  c.ttl.Seconds(),
+		"size":       len(c.data),
+		"ttl":        c.ttl.Seconds(),
+		"maxEntries": c.maxEntries,
 	}
 }

@@ -22,6 +22,11 @@ services:
       sed -i'' '/^[[:space:]]*formats:/,/^[[:space:]]*[a-z]+:/{s/- html/- json/}' /etc/searxng/settings.yml &&
       exec /usr/local/searxng/dockerfiles/docker-entrypoint.sh
       "
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # MCP SearXNG Server (Go version)
   searxng-go:
@@ -43,6 +48,11 @@ services:
       - mcp-network
     env_file:
       - .env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   mcp-network:

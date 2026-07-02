@@ -11,10 +11,10 @@ Built with the [official MCP Go SDK](https://github.com/modelcontextprotocol/go-
 
 ## Features
 
-- 🔍 **Web Search**: Powered by SearXNG metasearch engine with support for 70+ search engines
+- 🔍 **Web Search**: Powered by SearXNG metasearch engine, curated to ~14 lightweight enabled engines by default (250+ more available, disabled by default)
 - 🌐 **URL Content Extraction**: Fetch and convert web pages to Markdown
 - 🔒 **Privacy-Focused**: All searches go through your own SearXNG instance
-- ⚡ **High Performance**: Built in Go with in-memory caching (60s TTL)
+- ⚡ **High Performance**: Built in Go with in-memory caching (configurable TTL and max entries, default 60s / 500 entries)
 - 🐳 **Docker Ready**: One-command deployment with docker-compose
 - 🛡️ **Secure**: Non-root container execution, size limits, request timeouts
 
@@ -74,8 +74,8 @@ Built with the [official MCP Go SDK](https://github.com/modelcontextprotocol/go-
    {
     "permissions": {
     "allow": [
-      "mcp__searxng__searxng_web_search",
-      "mcp__searxng__web_url_read"
+      "mcp__searxng__web_search",
+      "mcp__searxng__url_read"
     ]
     },
     "enabledMcpjsonServers": [
@@ -104,7 +104,7 @@ Built with the [official MCP Go SDK](https://github.com/modelcontextprotocol/go-
 
 ## MCP Tools
 
-### 1. `searxng_web_search`
+### 1. `web_search`
 
 Performs web searches using SearXNG.
 
@@ -124,7 +124,7 @@ Performs web searches using SearXNG.
 }
 ```
 
-### 2. `web_url_read`
+### 2. `url_read`
 
 Reads and converts web page content to Markdown.
 
@@ -189,11 +189,20 @@ Or if installed locally:
 | `AUTH_PASSWORD` | No | - | Basic auth password for SearXNG |
 | `HTTP_PROXY` | No | - | HTTP proxy URL |
 | `HTTPS_PROXY` | No | - | HTTPS proxy URL |
-| `CACHE_TTL` | No | 60 | Cache time-to-live in seconds |
+| `CACHE_TTL` | No | 60 | URL-read cache time-to-live in seconds |
+| `CACHE_MAX_ENTRIES` | No | 500 | Max cached URLs kept in memory (retention cap, prevents unbounded growth) |
 
 ### SearXNG Configuration
 
 The SearXNG instance is automatically configured to output JSON format. Custom search engines can be configured in `searxng/config/settings.yml`.
+
+By default this repo ships with a curated set of ~14 enabled engines (google, bing, duckduckgo, brave, startpage, wikipedia, wikidata, github, stackoverflow, askubuntu, superuser, arxiv, pypi, mdn) instead of SearXNG's full default set, to reduce memory/CPU/connection overhead and avoid several upstream-broken engines that otherwise spam startup logs with errors. All other engines remain present but disabled — flip `disabled: true` off for any engine you want to re-enable.
+
+Outgoing request behavior is also tuned down to match this smaller engine set: `request_timeout: 3.0` / `max_request_timeout: 8.0`, `pool_connections: 20`, `pool_maxsize: 10` (down from the defaults of 100/20, sized for the original ~82-engine set).
+
+### Logging
+
+Both the `searxng` and `searxng-go` services set an explicit Docker `logging` driver (`json-file`, `max-size: 10m`, `max-file: 3`) in `docker-compose.yml`, so container logs rotate and are capped at ~30MB per service regardless of the host Docker daemon's own defaults.
 
 ## Available Make Commands
 
